@@ -1,16 +1,18 @@
 import React from 'react';
-import { Sparkles, Film, Cpu, HelpCircle } from 'lucide-react';
+import { Sparkles, Film, Cpu, HelpCircle, Download } from 'lucide-react';
 
 interface NavbarProps {
   onNewVideoClick: () => void;
   onOpenConnectors: () => void;
   onOpenGuide: () => void;
+  onOpenDownload?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   onNewVideoClick,
   onOpenConnectors,
-  onOpenGuide
+  onOpenGuide,
+  onOpenDownload
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-6 py-3.5 transition-colors">
@@ -26,7 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>InspiraVideo AI</span>
         </a>
 
-        {/* Zone 2: 4 clean single-line text links */}
+        {/* Zone 2: clean single-line text links */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
           <a
             href="#estilos"
@@ -48,6 +50,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Cpu className="w-4 h-4 text-indigo-400" />
             <span>Conectar Sora / Kling</span>
           </button>
+          {onOpenDownload && (
+            <button
+              type="button"
+              onClick={onOpenDownload}
+              className="text-emerald-400 hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer text-left"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>Descargar Archivos</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenGuide}

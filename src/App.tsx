@@ -36,6 +36,7 @@ export default function App() {
   const [isConnectorsOpen, setIsConnectorsOpen] = useState<boolean>(false);
   const [activeConnectorScene, setActiveConnectorScene] = useState<VideoScene | undefined>(undefined);
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
 
   const handleApplyIdea = (idea: IdeaItem) => {
     setSelectedGenre(idea.genre);
@@ -64,6 +65,14 @@ export default function App() {
     setIsConnectorsOpen(true);
   };
 
+  const handleOpenDownload = () => {
+    setIsDownloadOpen(true);
+    const studioEl = document.getElementById('estudio');
+    if (studioEl) {
+      studioEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleNewVideoFocus = () => {
     const generatorEl = document.getElementById('generador');
     if (generatorEl) {
@@ -78,6 +87,7 @@ export default function App() {
         onNewVideoClick={handleNewVideoFocus}
         onOpenConnectors={() => handleOpenConnectors()}
         onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenDownload={handleOpenDownload}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
@@ -105,6 +115,14 @@ export default function App() {
             >
               <span>Empezar a Crear</span>
               <ArrowDown className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenDownload}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-lg shadow-emerald-600/25 flex items-center gap-2 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Descargar Archivos</span>
             </button>
             <button
               type="button"
@@ -178,6 +196,8 @@ export default function App() {
             project={project}
             onUpdateProject={setProject}
             onOpenConnectors={handleOpenConnectors}
+            isDownloadOpen={isDownloadOpen}
+            onToggleDownload={setIsDownloadOpen}
           />
         </section>
 

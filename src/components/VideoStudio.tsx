@@ -22,20 +22,27 @@ import {
   Layers,
   ChevronRight,
   ExternalLink,
-  Cpu
+  Cpu,
+  Zap,
+  FileDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { DownloadModal } from './DownloadModal';
 
 interface VideoStudioProps {
   project: VideoProject;
   onUpdateProject: (updated: VideoProject) => void;
   onOpenConnectors: (initialScene?: VideoScene) => void;
+  isDownloadOpen?: boolean;
+  onToggleDownload?: (open: boolean) => void;
 }
 
 export const VideoStudio: React.FC<VideoStudioProps> = ({
   project,
   onUpdateProject,
-  onOpenConnectors
+  onOpenConnectors,
+  isDownloadOpen,
+  onToggleDownload
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -51,6 +58,16 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [internalDownloadOpen, setInternalDownloadOpen] = useState<boolean>(false);
+
+  const isDownloadModalOpen = isDownloadOpen !== undefined ? isDownloadOpen : internalDownloadOpen;
+  const setDownloadModalOpen = (open: boolean) => {
+    if (onToggleDownload) {
+      onToggleDownload(open);
+    } else {
+      setInternalDownloadOpen(open);
+    }
+  };
 
   const lastNarratedSceneRef = useRef<number>(-1);
 
@@ -223,8 +240,8 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({
     }
   };
 
-  // Export video (WebM/MP4)
-  const handleExportVideo = async () => {
+  // Export video (WebM/MP4) with fast rendering mode (3-4s) or real-time playback
+  const handleExportVideo = async (mode: 'fast' | 'realtime' = 'fast') => {
     const canvas = canvasRef.current;
     if (!canvas || isExporting) return;
 
@@ -248,29 +265,72 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({
       return;
     }
 
-    // Playback and record in real-time
-    setIsPlaying(true);
-    const filename = `inspira-video-${project.genre}-${project.style}.webm`;
+    const filename = `video-${project.genre}-${project.style}.webm`;
 
-    const checkInterval = setInterval(() => {
-      setCurrentTime(curr => {
-        const pct = Math.floor((curr / totalDuration) * 100);
+    if (mode === 'fast') {
+      // Fast simulation: step through all scenes across ~3.2 seconds
+      const totalSteps = 32;
+      let step = 0;
+      const interval = setInterval(() => {
+        step++;
+        const simulatedTime = (step / totalSteps) * totalDuration;
+        setCurrentTime(simulatedTime);
+
+        // Explicitly render this frame to ensure canvas captures all visual layers
+        const sceneInfo = getCurrentSceneInfo(project.scenes, simulatedTime);
+        const activeScene = sceneInfo.currentScene || project.scenes[0];
+        renderVideoFrame({
+          canvas,
+          scene: activeScene,
+          sceneIndex: sceneInfo.sceneIndex,
+          totalScenes: project.scenes.length,
+          sceneProgress: sceneInfo.sceneProgress,
+          totalProgress: Math.min(1, simulatedTime / totalDuration),
+          currentTime: simulatedTime,
+          totalDuration,
+          style: project.style,
+          aspectRatio,
+          showSubtitles: true
+        });
+
+        const pct = Math.floor((step / totalSteps) * 100);
         setExportProgress(Math.min(99, pct));
 
-        if (curr >= totalDuration) {
-          clearInterval(checkInterval);
+        if (step >= totalSteps) {
+          clearInterval(interval);
           setTimeout(async () => {
             await videoRecorder.stopRecording(filename);
             audioSynthesizer.stop();
             setIsPlaying(false);
             setIsExporting(false);
             setExportProgress(100);
-            confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
-          }, 300);
+            confetti({ particleCount: 85, spread: 70, origin: { y: 0.6 } });
+          }, 250);
         }
-        return curr;
-      });
-    }, 250);
+      }, 100);
+    } else {
+      // Playback and record in real-time
+      setIsPlaying(true);
+      const checkInterval = setInterval(() => {
+        setCurrentTime(curr => {
+          const pct = Math.floor((curr / totalDuration) * 100);
+          setExportProgress(Math.min(99, pct));
+
+          if (curr >= totalDuration) {
+            clearInterval(checkInterval);
+            setTimeout(async () => {
+              await videoRecorder.stopRecording(filename);
+              audioSynthesizer.stop();
+              setIsPlaying(false);
+              setIsExporting(false);
+              setExportProgress(100);
+              confetti({ particleCount: 75, spread: 70, origin: { y: 0.6 } });
+            }, 300);
+          }
+          return curr;
+        });
+      }, 250);
+    }
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -349,15 +409,27 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({
             <span>Prompts Sora / Kling</span>
           </button>
 
-          {/* Export button */}
+          {/* Quick Direct Video Download */}
           <button
             type="button"
-            onClick={handleExportVideo}
+            onClick={() => handleExportVideo('fast')}
             disabled={isExporting}
-            className="px-4 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg shadow-sm hover:shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 rounded-lg shadow-sm hover:shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+            title="Genera y descarga el archivo de video (.webm / .mp4) inmediatamente"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{isExporting ? `Exportando (${exportProgress}%)...` : 'Descargar Video'}</span>
+          </button>
+
+          {/* Download Center Modal button */}
+          <button
+            type="button"
+            onClick={() => setDownloadModalOpen(true)}
+            className="px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="Abrir centro de descarga de archivos (Video, Guion .txt, Prompts .json, Fotograma .png)"
+          >
+            <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Descargar Archivos</span>
           </button>
         </div>
       </div>
@@ -614,6 +686,16 @@ export const VideoStudio: React.FC<VideoStudioProps> = ({
           </div>
         </div>
       </div>
+      {/* Download Center Modal */}
+      <DownloadModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setDownloadModalOpen(false)}
+        project={project}
+        canvasRef={canvasRef}
+        onStartVideoExport={handleExportVideo}
+        isExporting={isExporting}
+        exportProgress={exportProgress}
+      />
     </div>
   );
 };
