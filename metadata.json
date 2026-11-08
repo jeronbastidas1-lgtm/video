@@ -1,0 +1,6 @@
+{
+  "name": "InspiraVideo AI - Generador de Videos Motivacionales",
+  "description": "Herramienta profesional para crear videos de 30 a 60 segundos con mensajes de motivación, esperanza, amor y consejos en estilos Real, 3D, 2D y Monigotes, con reproductor cinemático y conexión a Sora, Kling y Grok.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
